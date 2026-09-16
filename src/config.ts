@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+function isValidTimeZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-GB", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const schema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().min(10),
   TELEGRAM_OWNER_ID: z.coerce.number().int().positive(),
@@ -11,7 +20,10 @@ const schema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().min(5),
   // 32 random bytes, base64. Encrypts OAuth tokens at rest in Supabase.
   TOKEN_ENCRYPTION_KEY: z.string().min(40),
-  TIMEZONE: z.string().default("Asia/Jerusalem"),
+  TIMEZONE: z
+    .string()
+    .default("Asia/Jerusalem")
+    .refine(isValidTimeZone, { message: 'not a real timezone. Use one like "Asia/Jerusalem" or "Europe/London"' }),
   OWNER_NAME: z.string().default("Aviva"),
   // Proactive checks
   PROACTIVE_ENABLED: z.coerce.boolean().default(true),

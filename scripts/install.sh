@@ -53,8 +53,12 @@ if [ -z "${SKIP_ENV:-}" ]; then
   ask SUPABASE_SERVICE_ROLE_KEY "Supabase service_role key"
   ask GOOGLE_CLIENT_ID        "Google OAuth Client ID"
   ask GOOGLE_CLIENT_SECRET    "Google OAuth Client secret"
-  ask OWNER_NAME              "Your first name" "Aviva"
-  ask TIMEZONE                "Timezone" "Asia/Jerusalem"
+  ask OWNER_NAME              "Your first name (press Enter to accept)" "Aviva"
+  while true; do
+    ask TIMEZONE "Timezone (press Enter to accept)" "Asia/Jerusalem"
+    [ -f "/usr/share/zoneinfo/$TIMEZONE" ] && break
+    echo "  '$TIMEZONE' is not a timezone. Examples: Asia/Jerusalem, Europe/London, America/New_York"
+  done
   TOKEN_ENCRYPTION_KEY="$(openssl rand -base64 32)"
   cat > .env <<ENV
 TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
