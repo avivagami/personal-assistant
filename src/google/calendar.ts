@@ -1,4 +1,4 @@
-import { google, type calendar_v3 } from "googleapis";
+import { calendar as calendarApi, type calendar_v3 } from "@googleapis/calendar";
 import { requireGoogle } from "./auth.js";
 import { config } from "../config.js";
 
@@ -14,7 +14,7 @@ export interface EventSummary {
 }
 
 async function cal(): Promise<calendar_v3.Calendar> {
-  return google.calendar({ version: "v3", auth: await requireGoogle() });
+  return calendarApi({ version: "v3", auth: await requireGoogle() });
 }
 
 function summarise(e: calendar_v3.Schema$Event): EventSummary {

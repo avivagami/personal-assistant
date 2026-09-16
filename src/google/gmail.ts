@@ -1,4 +1,4 @@
-import { google, type gmail_v1 } from "googleapis";
+import { gmail as gmailApi, type gmail_v1 } from "@googleapis/gmail";
 import { requireGoogle } from "./auth.js";
 
 export interface MailSummary {
@@ -17,7 +17,7 @@ export interface MailMessage extends MailSummary {
 }
 
 async function gmail(): Promise<gmail_v1.Gmail> {
-  return google.gmail({ version: "v1", auth: await requireGoogle() });
+  return gmailApi({ version: "v1", auth: await requireGoogle() });
 }
 
 function header(msg: gmail_v1.Schema$Message, name: string): string {

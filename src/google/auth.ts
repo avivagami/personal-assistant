@@ -1,5 +1,5 @@
-import { google } from "googleapis";
-type OAuth2Client = InstanceType<typeof google.auth.OAuth2>;
+import { OAuth2Client } from "google-auth-library";
+import { oauth2 } from "@googleapis/oauth2";
 import { config } from "../config.js";
 import { db } from "../db/supabase.js";
 import { decrypt, encrypt } from "../db/crypto.js";
@@ -30,7 +30,7 @@ interface StoredToken {
 
 function newClient(): OAuth2Client {
   const c = config();
-  return new google.auth.OAuth2(c.GOOGLE_CLIENT_ID, c.GOOGLE_CLIENT_SECRET, REDIRECT_URI);
+  return new OAuth2Client(c.GOOGLE_CLIENT_ID, c.GOOGLE_CLIENT_SECRET, REDIRECT_URI);
 }
 
 export function authUrl(): string {
@@ -60,7 +60,7 @@ export async function connectWithCode(code: string): Promise<string> {
     throw new Error("Google did not return a refresh token. Remove the app at https://myaccount.google.com/permissions and try /connect again.");
   }
   client.setCredentials(tokens);
-  const me = await google.oauth2({ version: "v2", auth: client }).userinfo.get();
+  const me = await oauth2({ version: "v2", auth: client }).userinfo.get();
   const email = me.data.email ?? "unknown";
   const stored: StoredToken = { refresh_token: tokens.refresh_token, scopes: tokens.scope?.split(" ") ?? SCOPES };
   const { error } = await db().from("assistant_oauth_tokens").upsert({

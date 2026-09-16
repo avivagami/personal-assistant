@@ -18,9 +18,13 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
+    "@googleapis/calendar": "^20.0.0",
+    "@googleapis/drive": "^26.0.0",
+    "@googleapis/gmail": "^22.0.0",
+    "@googleapis/oauth2": "^10.0.0",
     "@supabase/supabase-js": "^2",
     "dotenv": "^17.4.2",
-    "googleapis": "^160",
+    "google-auth-library": "^11.1.0",
     "grammy": "^1",
     "zod": "^3"
   },

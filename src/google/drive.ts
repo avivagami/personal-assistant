@@ -1,4 +1,4 @@
-import { google } from "googleapis";
+import { drive as driveApi } from "@googleapis/drive";
 import { requireGoogle } from "./auth.js";
 
 export interface DriveFile {
@@ -10,7 +10,7 @@ export interface DriveFile {
 }
 
 export async function searchDrive(query: string, max = 10): Promise<DriveFile[]> {
-  const d = google.drive({ version: "v3", auth: await requireGoogle() });
+  const d = driveApi({ version: "v3", auth: await requireGoogle() });
   const safe = query.replace(/'/g, "\\'");
   const res = await d.files.list({
     q: `fullText contains '${safe}' and trashed = false`,
