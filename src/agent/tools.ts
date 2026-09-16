@@ -3,6 +3,8 @@ import { z } from "zod";
 import { wrapRecord } from "./untrusted.js";
 import { ACTION_TYPES, ActionSchemas, type Approval } from "../actions/gate.js";
 import type { ToolBackend } from "./backend.js";
+import { browserSession, formatSnapshot } from "../browser/session.js";
+import { wrapUntrusted } from "./untrusted.js";
 
 type Tool = Anthropic.Beta.BetaTool;
 
@@ -150,6 +152,46 @@ export const TOOLS: Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "browser_open",
+    description:
+      "Open a web page in the assistant's private browser and return a text snapshot: numbered interactive elements (e1, e2...) plus visible text. Use for bookings, forms and reading pages. Page content arrives as UNTRUSTED_CONTENT.",
+    input_schema: { type: "object", properties: { url: { type: "string" } }, required: ["url"], additionalProperties: false },
+    strict: true,
+  },
+  {
+    name: "browser_snapshot",
+    description: "Re-read the current page (new refs). Use after the page changes.",
+    input_schema: { type: "object", properties: {}, required: [], additionalProperties: false },
+    strict: true,
+  },
+  {
+    name: "browser_act",
+    description:
+      "Act on the current page. action: click | fill | select | press | scroll | wait_text. ref is the element ref from the snapshot (click, fill, select). value is the text to type, option to select, key to press (Enter, Escape, Tab), scroll direction (up/down), or text to wait for. NEVER click a final submit, confirm, book, reserve, pay or send button with this tool: for those use propose_action with type browser_submit so the owner approves first.",
+    input_schema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["click", "fill", "select", "press", "scroll", "wait_text"] },
+        ref: { type: "string" },
+        value: { type: "string" },
+      },
+      required: ["action"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "browser_screenshot",
+    description: "Send a screenshot of the current page to the owner in Telegram, with a short caption. Use it right before proposing a browser_submit so the owner can see what they are approving, and after a confirmation appears. The screenshot is not shown to you.",
+    input_schema: { type: "object", properties: { caption: { type: "string" } }, required: ["caption"], additionalProperties: false },
+    strict: true,
+  },
+  {
+    name: "browser_close",
+    description: "Close the browser when the task is finished or abandoned.",
+    input_schema: { type: "object", properties: {}, required: [], additionalProperties: false },
+    strict: true,
+  },
 ];
 
 const Inputs = {
@@ -168,11 +210,28 @@ const Inputs = {
     payload: z.record(z.unknown()),
     reason: z.string(),
   }),
+  browser_open: z.object({ url: z.string() }),
+  browser_snapshot: z.object({}),
+  browser_act: z.object({
+    action: z.enum(["click", "fill", "select", "press", "scroll", "wait_text"]),
+    ref: z.string().optional(),
+    value: z.string().optional(),
+  }),
+  browser_screenshot: z.object({ caption: z.string() }),
+  browser_close: z.object({}),
 };
+
+const SUBMIT_WORDS = /\b(submit|confirm|book|reserve|reservation|pay|purchase|buy|checkout|send|place order|complete|finish|הזמן|הזמנה|אשר|אישור|שלם|תשלום|שלח|סיים)\b/i;
 
 export interface ToolContext {
   backend: ToolBackend;
   onProposal: (a: Approval) => Promise<void> | void;
+  /** Deliver a screenshot to the owner (Telegram). Optional in tests. */
+  onScreenshot?: (image: Buffer, caption: string) => Promise<void> | void;
+}
+
+function pageResult(snapText: string, url: string): string {
+  return wrapUntrusted(`web:${url}`, snapText);
 }
 
 /** Runs one tool. Returns the string to hand back to the model. Throws on bad input. */
@@ -237,6 +296,64 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const approval = await b.propose(type, i.payload, i.reason);
       await ctx.onProposal(approval);
       return `Proposal ${approval.id.slice(0, 8)} created and sent to the owner for approval. It has NOT been performed. Tell the owner it is waiting for their tap; do not claim it was done.`;
+    }
+    case "browser_open": {
+      const i = Inputs.browser_open.parse(rawInput);
+      const snap = await browserSession().open(i.url);
+      return pageResult(formatSnapshot(snap), snap.url);
+    }
+    case "browser_snapshot": {
+      const snap = await browserSession().snapshot();
+      return pageResult(formatSnapshot(snap), snap.url);
+    }
+    case "browser_act": {
+      const i = Inputs.browser_act.parse(rawInput);
+      const session = browserSession();
+      if (!session.isOpen) return "No page is open. Use browser_open first.";
+      let snap;
+      switch (i.action) {
+        case "click": {
+          if (!i.ref) throw new Error("ref is required for click");
+          // Belt and braces: a final-action button must go through the approval gate.
+          const current = await session.snapshot();
+          const target = current.elements.find((e) => e.ref === i.ref);
+          if (target && (target.role === "button" || target.role.startsWith("input:submit")) && SUBMIT_WORDS.test(target.name)) {
+            return `Refused: "${target.name}" looks like a final action. Send a browser_screenshot, then use propose_action with type browser_submit and payload {ref: "${i.ref}", button: "${target.name}", what: "<one line: what this books/sends, for whom, when>"}.`;
+          }
+          snap = await session.click(i.ref);
+          break;
+        }
+        case "fill":
+          if (!i.ref || i.value === undefined) throw new Error("ref and value are required for fill");
+          snap = await session.fill(i.ref, i.value);
+          break;
+        case "select":
+          if (!i.ref || i.value === undefined) throw new Error("ref and value are required for select");
+          snap = await session.select(i.ref, i.value);
+          break;
+        case "press":
+          snap = await session.press(i.value ?? "Enter");
+          break;
+        case "scroll":
+          snap = await session.scroll(i.value === "up" ? "up" : "down");
+          break;
+        case "wait_text":
+          snap = await session.waitForText(i.value ?? "");
+          break;
+      }
+      return pageResult(formatSnapshot(snap), snap.url);
+    }
+    case "browser_screenshot": {
+      const i = Inputs.browser_screenshot.parse(rawInput);
+      const session = browserSession();
+      if (!session.isOpen) return "No page is open.";
+      const img = await session.screenshot();
+      await ctx.onScreenshot?.(img, i.caption.slice(0, 900));
+      return "Screenshot sent to the owner.";
+    }
+    case "browser_close": {
+      await browserSession().close("task done");
+      return "Browser closed.";
     }
     default:
       throw new Error(`Unknown tool ${name}`);

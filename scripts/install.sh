@@ -54,6 +54,8 @@ if [ -z "${SKIP_ENV:-}" ]; then
   ask GOOGLE_CLIENT_ID        "Google OAuth Client ID"
   ask GOOGLE_CLIENT_SECRET    "Google OAuth Client secret"
   ask OWNER_NAME              "Your first name (press Enter to accept)" "Aviv"
+  ask BOOKING_PHONE           "Phone number for restaurant bookings"
+  ask BOOKING_EMAIL           "Email for booking confirmations (e.g. you+booking@gmail.com)"
   while true; do
     ask TIMEZONE "Timezone (press Enter to accept)" "Asia/Jerusalem"
     [ -f "/usr/share/zoneinfo/$TIMEZONE" ] && break
@@ -65,6 +67,10 @@ TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
 TELEGRAM_OWNER_ID=$TELEGRAM_OWNER_ID
 ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY
 ANTHROPIC_MODEL=claude-opus-5
+ANTHROPIC_MODEL_PROACTIVE=claude-sonnet-5
+BOOKING_NAME=$OWNER_NAME
+BOOKING_PHONE=$BOOKING_PHONE
+BOOKING_EMAIL=$BOOKING_EMAIL
 SUPABASE_URL=$SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
 GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID

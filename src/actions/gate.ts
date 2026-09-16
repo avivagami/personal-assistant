@@ -12,6 +12,7 @@ import { audit } from "../audit/log.js";
 import { config } from "../config.js";
 import { sendMail, createDraft } from "../google/gmail.js";
 import { createEvent, deleteEvent } from "../google/calendar.js";
+import { browserSession } from "../browser/session.js";
 
 export const ActionSchemas = {
   send_email: z.object({
@@ -37,6 +38,12 @@ export const ActionSchemas = {
   delete_event: z.object({
     eventId: z.string().min(1),
     title: z.string().optional(),
+  }),
+  // Click a submit / confirm / pay button in the assistant's browser.
+  browser_submit: z.object({
+    ref: z.string().min(1),
+    button: z.string().min(1),
+    what: z.string().min(1),
   }),
 } as const;
 
@@ -65,6 +72,8 @@ export function describeAction(type: ActionType, payload: Record<string, unknown
       return `Create calendar event "${payload.title}"\n${payload.startIso} to ${payload.endIso}${payload.location ? `\nAt: ${payload.location}` : ""}${Array.isArray(payload.attendees) && payload.attendees.length ? `\nInvite: ${payload.attendees.join(", ")}` : ""}`;
     case "delete_event":
       return `Delete calendar event ${payload.title ? `"${payload.title}" ` : ""}(${payload.eventId})`;
+    case "browser_submit":
+      return `In the browser, press "${payload.button}":\n${payload.what}`;
   }
 }
 
@@ -149,6 +158,12 @@ async function execute(a: Approval): Promise<string> {
     case "delete_event": {
       await deleteEvent((a.payload as { eventId: string }).eventId);
       return "Event deleted.";
+    }
+    case "browser_submit": {
+      const session = browserSession();
+      if (!session.isOpen) throw new Error("The browser session has closed (15 minutes idle). Ask me to start the booking again.");
+      const snap = await session.click((a.payload as { ref: string }).ref);
+      return `Pressed. Page now: ${snap.title} (${snap.url})\n${snap.text.slice(0, 600)}`;
     }
   }
 }

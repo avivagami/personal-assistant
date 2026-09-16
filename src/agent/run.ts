@@ -23,6 +23,7 @@ export interface RunOptions {
   input: string;
   backend?: ToolBackend;
   onProposal?: (a: Approval) => Promise<void> | void;
+  onScreenshot?: (image: Buffer, caption: string) => Promise<void> | void;
   /** Overrides for tests. */
   connectedEmailOverride?: string | null;
   effort?: "low" | "medium" | "high";
@@ -63,6 +64,7 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
       proposals.push(a);
       await opts.onProposal?.(a);
     },
+    onScreenshot: opts.onScreenshot,
   };
 
   const email = opts.connectedEmailOverride !== undefined ? opts.connectedEmailOverride : await connectedEmail();
@@ -70,7 +72,7 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
   const system: Anthropic.Beta.BetaTextBlockParam[] = [
     // 1-hour cache: turns are minutes apart while a human reads and replies, so a
     // 5-minute cache would expire between most turns and re-bill the whole prefix.
-    { type: "text", text: stableSystemPrompt(c.OWNER_NAME, c.TIMEZONE), cache_control: { type: "ephemeral", ttl: "1h" } },
+    { type: "text", text: stableSystemPrompt(c.OWNER_NAME, c.TIMEZONE, { name: c.BOOKING_NAME, phone: c.BOOKING_PHONE, email: c.BOOKING_EMAIL }), cache_control: { type: "ephemeral", ttl: "1h" } },
     { type: "text", text: volatileSystemPrompt(nowIso, await backend.memoryContext(), email) },
   ];
 
@@ -93,7 +95,8 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
       thinking: { type: "adaptive" },
       output_config: { effort: opts.effort ?? "medium" },
       system,
-      tools: TOOLS,
+      // Web search runs on Anthropic's side: used to find booking pages and phone numbers.
+      tools: [...TOOLS, { type: "web_search_20260209", name: "web_search", max_uses: 4, user_location: { type: "approximate", country: "IL", timezone: c.TIMEZONE } }],
       messages,
     });
     stopReason = response.stop_reason;

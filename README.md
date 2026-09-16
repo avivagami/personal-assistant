@@ -37,6 +37,7 @@ src/
   agent/tools.ts        what the model can call
   agent/prompt.ts       the system prompt
   agent/untrusted.ts    the envelope for outside content
+  browser/session.ts    the private browser: snapshots with refs, actions, screenshots
   actions/gate.ts       proposals, approval, execution
   google/               OAuth (encrypted, revocable), Gmail, Calendar, Drive
   memory/store.ts       facts, preferences, follow-ups, /forget
@@ -55,8 +56,13 @@ See [docs/SETUP.md](docs/SETUP.md). In short: fill in `.env`, then
 For development: `npm install`, `npm run dev`. Checks: `npm run typecheck`,
 `npm test`, and with an API key `npm run test:injection`.
 
+- **Does things on websites.** A private Chromium on the server, fresh for
+  every task, that the model drives by reading pages as numbered elements
+  (no screenshots to the model, which keeps it cheap). Any final button
+  (book, confirm, pay, send) is refused in code and routed through the
+  approval gate with a screenshot for you. Cards are never entered.
+
 ## What is deliberately not here yet
 
-- Browser sandbox for bookings on websites (plan week 5).
 - Phone calls (Tier 2).
 - Screen or audio capture from your devices (never).

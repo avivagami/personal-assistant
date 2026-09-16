@@ -16,7 +16,13 @@ const schema = z.object({
   ANTHROPIC_MODEL: z.string().default("claude-opus-5"),
   // Model for the unattended proactive checks (15-minute glance, brief, nudges).
   // Defaults to the main model. Set to claude-haiku-4-5 or claude-sonnet-5 to cut cost.
-  ANTHROPIC_MODEL_PROACTIVE: z.string().optional(),
+  ANTHROPIC_MODEL_PROACTIVE: z.string().default("claude-sonnet-5"),
+  // The identity the browser uses on booking forms. Never the owner's passwords.
+  BOOKING_NAME: z.string().default("Aviv"),
+  BOOKING_PHONE: z.string().default(""),
+  BOOKING_EMAIL: z.string().default(""),
+  // Path to a Chromium binary when not using the bundled one (local dev only).
+  CHROMIUM_PATH: z.string().optional(),
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(10),
   GOOGLE_CLIENT_ID: z.string().min(5),

@@ -1,4 +1,5 @@
-import { Bot, InlineKeyboard, type Context } from "grammy";
+import { Bot, InlineKeyboard, InputFile, type Context } from "grammy";
+import { browserSession } from "../browser/session.js";
 import { config } from "../config.js";
 import { audit, recentAudit } from "../audit/log.js";
 import { runAgent } from "../agent/run.js";
@@ -30,16 +31,47 @@ export async function notifyOwner(text: string): Promise<void> {
   await audit("message_out", "assistant", { proactive: true, text });
 }
 
-/** Posts a proposal with Approve / Reject buttons. */
+export async function sendScreenshot(image: Buffer, caption: string): Promise<void> {
+  await telegram().api.sendPhoto(config().TELEGRAM_OWNER_ID, new InputFile(image, "page.jpg"), { caption });
+}
+
+/** Posts a proposal with Approve / Reject buttons. Browser submits carry a fresh screenshot. */
 export async function postApproval(a: Approval): Promise<void> {
   const kb = new InlineKeyboard().text("✅ Approve", `approve:${a.id}`).text("❌ Reject", `reject:${a.id}`);
   const expires = new Date(a.expires_at).toLocaleString("en-GB", { timeZone: config().TIMEZONE, hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" });
-  const msg = await telegram().api.sendMessage(
-    config().TELEGRAM_OWNER_ID,
-    `Waiting for your approval (expires ${expires}):\n\n${a.summary}`,
-    { reply_markup: kb, link_preview_options: { is_disabled: true } },
-  );
+  const text = `Waiting for your approval (expires ${expires}):\n\n${a.summary}`;
+  if (a.action_type === "browser_submit" && browserSession().isOpen) {
+    const img = await browserSession().screenshot().catch(() => null);
+    if (img) {
+      const msg = await telegram().api.sendPhoto(config().TELEGRAM_OWNER_ID, new InputFile(img, "page.jpg"), { caption: text.slice(0, 1000), reply_markup: kb });
+      await attachMessageId(a.id, msg.message_id);
+      return;
+    }
+  }
+  const msg = await telegram().api.sendMessage(config().TELEGRAM_OWNER_ID, text, { reply_markup: kb, link_preview_options: { is_disabled: true } });
   await attachMessageId(a.id, msg.message_id);
+}
+
+async function editApprovalMessage(ctx: Context, text: string): Promise<void> {
+  // Photo messages have captions, text messages have text.
+  const isPhoto = Boolean(ctx.callbackQuery?.message && "photo" in ctx.callbackQuery.message);
+  if (isPhoto) await ctx.editMessageCaption({ caption: text.slice(0, 1000) }).catch(() => {});
+  else await ctx.editMessageText(text).catch(() => {});
+}
+
+/** After a browser submit is approved, let the agent verify and finish the task. */
+async function continueAfterSubmit(a: Approval, result: string): Promise<void> {
+  const chatId = config().TELEGRAM_OWNER_ID;
+  try {
+    const history = await recentHistory();
+    const input = `[System] The owner approved and the button was pressed. Result: ${result}\nVerify the outcome on the page (browser_snapshot), send a screenshot of the confirmation, then propose the calendar event and save a followup memory with the details. If it failed, say what happened.`;
+    await appendChat("user", input);
+    const r = await runAgent({ history, input, onProposal: postApproval, onScreenshot: sendScreenshot, purpose: "booking" });
+    await appendChat("assistant", r.text);
+    await say(chatId, r.text);
+  } catch (e) {
+    await say(chatId, `Pressed it, but I could not finish the follow-up: ${e instanceof Error ? e.message : String(e)}`);
+  }
 }
 
 const HELP = `I read your Gmail, Calendar and Drive live and act only after you tap Approve.
@@ -54,7 +86,7 @@ const HELP = `I read your Gmail, Calendar and Drive live and act only after you 
 /cost - what I have cost today and this month
 /help - this
 
-Or just text me. "What did I not reply to?", "Book lunch with Dana Thursday 13:00", "Remind me to call the bank Friday".`;
+Or just text me. "What did I not reply to?", "Book a table for 4 at Taizu Thursday 20:00", "Cancel my Ontopo reservation for Friday", "Remind me to call the bank Sunday".`;
 
 export async function startBot(): Promise<Bot> {
   const c = config();
@@ -152,12 +184,14 @@ export async function startBot(): Promise<Bot> {
       }
       if (kind === "reject") {
         const r = await reject(id);
-        await ctx.editMessageText(`${r ? "Rejected" : `Already ${a.status}`}:\n\n${a.summary}`);
+        await editApprovalMessage(ctx, `${r ? "Rejected" : `Already ${a.status}`}:\n\n${a.summary}`);
         return ctx.answerCallbackQuery({ text: r ? "Rejected" : "No change" });
       }
+      await ctx.answerCallbackQuery({ text: "Working..." });
       const result = await approveAndExecute(id);
-      await ctx.editMessageText(`${result.ok ? "Done" : "Not done"}: ${result.message}\n\n${a.summary}`);
-      return ctx.answerCallbackQuery({ text: result.ok ? "Done" : "Failed" });
+      await editApprovalMessage(ctx, `${result.ok ? "Done" : "Not done"}: ${result.message.slice(0, 700)}\n\n${a.summary}`);
+      if (result.ok && a.action_type === "browser_submit") await continueAfterSubmit(a, result.message);
+      return;
     }
     await ctx.answerCallbackQuery();
   });
@@ -184,7 +218,7 @@ export async function startBot(): Promise<Bot> {
     try {
       const history = await recentHistory();
       await appendChat("user", text);
-      const result = await runAgent({ history, input: text, onProposal: postApproval, purpose: "chat" });
+      const result = await runAgent({ history, input: text, onProposal: postApproval, onScreenshot: sendScreenshot, purpose: "chat" });
       await appendChat("assistant", result.text);
       await audit("message_out", "assistant", { text: result.text, tools: result.toolCalls.map((t) => t.name), proposals: result.proposals.length });
       await say(chatId, result.text);

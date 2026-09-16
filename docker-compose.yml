@@ -4,6 +4,8 @@ services:
     container_name: assistant
     restart: unless-stopped
     env_file: .env
+    # Chromium needs a larger shared-memory segment than Docker's 64 MB default.
+    shm_size: "512m"
     # No ports: the bot uses Telegram long polling, so nothing listens.
     logging:
       driver: json-file
