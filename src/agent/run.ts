@@ -96,7 +96,7 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
       output_config: { effort: opts.effort ?? "medium" },
       system,
       // Web search runs on Anthropic's side: used to find booking pages and phone numbers.
-      tools: [...TOOLS, { type: "web_search_20260209", name: "web_search", max_uses: 4, user_location: { type: "approximate", country: "IL", timezone: c.TIMEZONE } }],
+      tools: [...TOOLS, { type: "web_search_20260209", name: "web_search", max_uses: 4, user_location: { type: "approximate", city: "Tel Aviv", timezone: c.TIMEZONE } }],
       messages,
     });
     stopReason = response.stop_reason;
