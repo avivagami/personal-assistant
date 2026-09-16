@@ -29,16 +29,17 @@ Only that id can talk to the bot. Anyone else is ignored and logged.
 
 ## 3. Supabase (already done)
 
-The tables are already created in your existing project **tiktok world IL**
-(Frankfurt, same region as the server). They are all prefixed `assistant_` so
-they sit next to the TikTok World tables without touching them.
+The assistant has its own Supabase project, **personal-assistant**, in
+Frankfurt (eu-central-1), separate from anything else. The six tables are
+already created and locked with row-level security.
 
-1. In Supabase, open the project, then **Project Settings → API**.
-2. `Project URL` is `SUPABASE_URL`.
-3. `service_role` secret is `SUPABASE_SERVICE_ROLE_KEY`. This key only ever
+1. Open https://supabase.com/dashboard and choose the project **personal-assistant**.
+2. **Project Settings → API Keys**.
+3. `Project URL` is `SUPABASE_URL`: https://ywvgmeqxdwprtwitsdig.supabase.co
+4. `service_role` secret is `SUPABASE_SERVICE_ROLE_KEY`. This key only ever
    lives on your server, never in a browser or in Git.
 
-If you ever want a fresh project instead, create it in the **Frankfurt (eu-central-1)**
+If you ever want to start over, create a new project in the **Frankfurt (eu-central-1)**
 region and paste the contents of `supabase/migrations/001_assistant_init.sql`
 into the SQL editor.
 
