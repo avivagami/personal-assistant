@@ -24,7 +24,7 @@ const schema = z.object({
     .string()
     .default("Asia/Jerusalem")
     .refine(isValidTimeZone, { message: 'not a real timezone. Use one like "Asia/Jerusalem" or "Europe/London"' }),
-  OWNER_NAME: z.string().default("Aviva"),
+  OWNER_NAME: z.string().default("Aviv"),
   // Proactive checks
   PROACTIVE_ENABLED: z.coerce.boolean().default(true),
   PROACTIVE_INTERVAL_MINUTES: z.coerce.number().int().min(5).default(15),

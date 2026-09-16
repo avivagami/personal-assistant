@@ -12,7 +12,7 @@ it in as you go.
 ## 1. Telegram bot (5 minutes)
 
 1. In Telegram, open **@BotFather** and send `/newbot`.
-2. Give it a name (for example "Aviva's assistant") and a username ending in `bot`.
+2. Give it a name (for example "Aviv's assistant") and a username ending in `bot`.
 3. BotFather replies with a token like `123456789:AAH...`. That is `TELEGRAM_BOT_TOKEN`.
 4. Open **@userinfobot** and press Start. It shows your numeric id. That is `TELEGRAM_OWNER_ID`.
 

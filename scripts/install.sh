@@ -53,7 +53,7 @@ if [ -z "${SKIP_ENV:-}" ]; then
   ask SUPABASE_SERVICE_ROLE_KEY "Supabase service_role key"
   ask GOOGLE_CLIENT_ID        "Google OAuth Client ID"
   ask GOOGLE_CLIENT_SECRET    "Google OAuth Client secret"
-  ask OWNER_NAME              "Your first name (press Enter to accept)" "Aviva"
+  ask OWNER_NAME              "Your first name (press Enter to accept)" "Aviv"
   while true; do
     ask TIMEZONE "Timezone (press Enter to accept)" "Asia/Jerusalem"
     [ -f "/usr/share/zoneinfo/$TIMEZONE" ] && break
