@@ -1,0 +1,10 @@
+services:
+  assistant:
+    build: .
+    container_name: assistant
+    restart: unless-stopped
+    env_file: .env
+    # No ports: the bot uses Telegram long polling, so nothing listens.
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
