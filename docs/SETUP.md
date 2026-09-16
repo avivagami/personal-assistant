@@ -93,26 +93,13 @@ On your laptop, in a terminal:
 
     ssh root@YOUR_SERVER_IP
 
-Then paste these lines one block at a time:
+Then paste this one line. It installs everything, asks you for each value,
+and starts the bot:
 
-    # Firewall: SSH only. The bot makes outbound connections; nothing listens.
-    apt-get update && apt-get install -y ufw git
-    ufw default deny incoming && ufw default allow outgoing
-    ufw allow OpenSSH && ufw --force enable
+    curl -fsSL https://raw.githubusercontent.com/avivagami/personal-assistant/claude/ready-to-code-okjjiy/scripts/install.sh | bash
 
-    # Docker
-    curl -fsSL https://get.docker.com | sh
-
-    # The assistant
-    git clone https://github.com/avivagami/personal-assistant.git /opt/assistant
-    cd /opt/assistant
-    cp .env.example .env
-    nano .env      # paste every value you collected above, then Ctrl+O, Enter, Ctrl+X
-
-    docker compose up -d --build
-    docker compose logs -f     # Ctrl+C to stop watching
-
-You should see `@yourbot is listening`.
+When it prints "Running", you are done. If you ever need to change a value,
+run the same line again and answer "n" to keeping the existing settings.
 
 Disk encryption: Hetzner does not encrypt disks by default. The only secrets on
 this disk are the `.env` file and Docker images. Your Google token is stored
