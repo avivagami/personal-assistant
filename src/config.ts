@@ -14,6 +14,9 @@ const schema = z.object({
   TELEGRAM_OWNER_ID: z.coerce.number().int().positive(),
   ANTHROPIC_API_KEY: z.string().min(10),
   ANTHROPIC_MODEL: z.string().default("claude-opus-5"),
+  // Model for the unattended proactive checks (15-minute glance, brief, nudges).
+  // Defaults to the main model. Set to claude-haiku-4-5 or claude-sonnet-5 to cut cost.
+  ANTHROPIC_MODEL_PROACTIVE: z.string().optional(),
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(10),
   GOOGLE_CLIENT_ID: z.string().min(5),

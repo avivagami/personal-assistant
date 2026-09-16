@@ -29,7 +29,14 @@ async function markNotified(keys: string[]): Promise<void> {
 }
 
 async function deliver(task: string, label: string, keys: string[]): Promise<void> {
-  const result = await runAgent({ input: task, onProposal: postApproval, effort: "low" });
+  const c = config();
+  const result = await runAgent({
+    input: task,
+    onProposal: postApproval,
+    effort: "low",
+    model: c.ANTHROPIC_MODEL_PROACTIVE ?? c.ANTHROPIC_MODEL,
+    purpose: label,
+  });
   const text = result.text.trim();
   await audit("proactive", "assistant", { label, keys, said: text !== NOTHING && !text.includes(NOTHING), tools: result.toolCalls.map((t) => t.name) });
   await markNotified(keys);

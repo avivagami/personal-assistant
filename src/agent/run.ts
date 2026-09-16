@@ -6,6 +6,7 @@ import { stableSystemPrompt, volatileSystemPrompt } from "./prompt.js";
 import { realBackend, type ToolBackend } from "./backend.js";
 import { connectedEmail } from "../google/auth.js";
 import type { Approval } from "../actions/gate.js";
+import { recordUsage } from "../audit/usage.js";
 
 type Msg = Anthropic.Beta.BetaMessageParam;
 
@@ -26,10 +27,23 @@ export interface RunOptions {
   connectedEmailOverride?: string | null;
   effort?: "low" | "medium" | "high";
   maxIterations?: number;
+  /** Model override, e.g. a cheaper one for unattended checks. */
+  model?: string;
+  /** Label for the usage log: "chat", "periodic", "morning_brief", ... */
+  purpose?: string;
+}
+
+export interface Usage {
+  input: number;
+  cacheWrite: number;
+  cacheRead: number;
+  output: number;
+  requests: number;
 }
 
 export interface RunResult {
   text: string;
+  usage: Usage;
   toolCalls: { name: string; input: unknown; ok: boolean }[];
   proposals: Approval[];
   stopReason: string | null;
@@ -54,7 +68,9 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
   const email = opts.connectedEmailOverride !== undefined ? opts.connectedEmailOverride : await connectedEmail();
   const nowIso = new Date().toLocaleString("sv-SE", { timeZone: c.TIMEZONE }).replace(" ", "T");
   const system: Anthropic.Beta.BetaTextBlockParam[] = [
-    { type: "text", text: stableSystemPrompt(c.OWNER_NAME, c.TIMEZONE), cache_control: { type: "ephemeral" } },
+    // 1-hour cache: turns are minutes apart while a human reads and replies, so a
+    // 5-minute cache would expire between most turns and re-bill the whole prefix.
+    { type: "text", text: stableSystemPrompt(c.OWNER_NAME, c.TIMEZONE), cache_control: { type: "ephemeral", ttl: "1h" } },
     { type: "text", text: volatileSystemPrompt(nowIso, await backend.memoryContext(), email) },
   ];
 
@@ -63,13 +79,17 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
   const maxIter = opts.maxIterations ?? 12;
   let finalText = "";
   let stopReason: string | null = null;
+  const usage: Usage = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0, requests: 0 };
+  const model = opts.model ?? c.ANTHROPIC_MODEL;
 
   for (let iter = 0; iter < maxIter; iter++) {
     const response = await anthropic().beta.messages.create({
-      model: c.ANTHROPIC_MODEL,
+      model,
       max_tokens: 8000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
+      // Auto-cache the growing conversation tail inside the tool loop.
+      cache_control: { type: "ephemeral" },
       thinking: { type: "adaptive" },
       output_config: { effort: opts.effort ?? "medium" },
       system,
@@ -77,6 +97,11 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
       messages,
     });
     stopReason = response.stop_reason;
+    usage.requests += 1;
+    usage.input += response.usage.input_tokens;
+    usage.cacheWrite += response.usage.cache_creation_input_tokens ?? 0;
+    usage.cacheRead += response.usage.cache_read_input_tokens ?? 0;
+    usage.output += response.usage.output_tokens;
 
     if (response.stop_reason === "refusal") {
       finalText = "I can't help with that one.";
@@ -115,5 +140,6 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
   }
 
   if (!finalText) finalText = "I did the reading but ran out of steps before answering. Ask me again more narrowly.";
-  return { text: finalText, toolCalls, proposals, stopReason };
+  await recordUsage(model, opts.purpose ?? "chat", usage);
+  return { text: finalText, usage, toolCalls, proposals, stopReason };
 }

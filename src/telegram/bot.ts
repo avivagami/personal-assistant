@@ -5,6 +5,7 @@ import { runAgent } from "../agent/run.js";
 import { appendChat, recentHistory } from "../agent/history.js";
 import { authUrl, connectWithCode, connectedEmail, disconnect, extractCode } from "../google/auth.js";
 import { forgetEverything, listMemories } from "../memory/store.js";
+import { costReport } from "../audit/usage.js";
 import { approveAndExecute, attachMessageId, getApproval, listPending, reject, type Approval } from "../actions/gate.js";
 
 let bot: Bot | undefined;
@@ -50,6 +51,7 @@ const HELP = `I read your Gmail, Calendar and Drive live and act only after you 
 /memory - what I remember
 /forget - erase memory and chat history
 /audit - last 20 things I did
+/cost - what I have cost today and this month
 /help - this
 
 Or just text me. "What did I not reply to?", "Book lunch with Dana Thursday 13:00", "Remind me to call the bank Friday".`;
@@ -112,6 +114,10 @@ export async function startBot(): Promise<Bot> {
   bot.command("forget", async (ctx) => {
     const kb = new InlineKeyboard().text("Yes, erase everything", "forget:confirm").text("Cancel", "forget:cancel");
     await ctx.reply("Erase all memories, follow-ups and chat history? The audit log and the Google connection stay.", { reply_markup: kb });
+  });
+
+  bot.command("cost", async (ctx) => {
+    await ctx.reply(await costReport());
   });
 
   bot.command("audit", async (ctx) => {
@@ -178,7 +184,7 @@ export async function startBot(): Promise<Bot> {
     try {
       const history = await recentHistory();
       await appendChat("user", text);
-      const result = await runAgent({ history, input: text, onProposal: postApproval });
+      const result = await runAgent({ history, input: text, onProposal: postApproval, purpose: "chat" });
       await appendChat("assistant", result.text);
       await audit("message_out", "assistant", { text: result.text, tools: result.toolCalls.map((t) => t.name), proposals: result.proposals.length });
       await say(chatId, result.text);
@@ -205,6 +211,7 @@ export async function startBot(): Promise<Bot> {
     { command: "memory", description: "What I remember" },
     { command: "forget", description: "Erase memory" },
     { command: "audit", description: "Recent activity" },
+    { command: "cost", description: "API spend today and this month" },
   ]);
 
   // Long polling: nothing inbound reaches the server. No webhook, no open port.
