@@ -83,11 +83,14 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
   let stopReason: string | null = null;
   const usage: Usage = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0, requests: 0 };
   const model = opts.model ?? c.ANTHROPIC_MODEL;
+  // web_search runs inside a server-side container; its id must be reused across the loop.
+  let containerId: string | undefined;
 
   for (let iter = 0; iter < maxIter; iter++) {
     const response = await anthropic().beta.messages.create({
       model,
       max_tokens: 8000,
+      ...(containerId ? { container: containerId } : {}),
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       // Auto-cache the growing conversation tail inside the tool loop.
@@ -100,6 +103,7 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
       messages,
     });
     stopReason = response.stop_reason;
+    if (response.container?.id) containerId = response.container.id;
     usage.requests += 1;
     usage.input += response.usage.input_tokens;
     usage.cacheWrite += response.usage.cache_creation_input_tokens ?? 0;
