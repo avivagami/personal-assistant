@@ -16,7 +16,7 @@ export const TOOLS: Tool[] = [
       type: "object",
       properties: {
         query: { type: "string", description: "Gmail search query" },
-        max: { type: "integer", minimum: 1, maximum: 50, description: "Max results, default 15" },
+        max: { type: "integer", description: "Max results, 1 to 50, default 15" },
       },
       required: ["query"],
       additionalProperties: false,
@@ -50,7 +50,7 @@ export const TOOLS: Tool[] = [
     description: "Threads where the owner sent the last message at least N days ago and nobody replied. Use for 'what did I not get an answer to'.",
     input_schema: {
       type: "object",
-      properties: { older_than_days: { type: "integer", minimum: 1, maximum: 30, description: "Default 3" } },
+      properties: { older_than_days: { type: "integer", description: "1 to 30, default 3" } },
       required: [],
       additionalProperties: false,
     },
@@ -149,7 +149,6 @@ export const TOOLS: Tool[] = [
       required: ["type", "payload", "reason"],
       additionalProperties: false,
     },
-    strict: true,
   },
 ];
 
@@ -182,7 +181,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
   switch (name) {
     case "gmail_search": {
       const i = Inputs.gmail_search.parse(rawInput);
-      const rows = await b.searchMail(i.query, i.max ?? 15);
+      const rows = await b.searchMail(i.query, Math.min(Math.max(i.max ?? 15, 1), 50));
       return JSON.stringify(rows.map((r) => wrapRecord(`gmail:${r.id}`, r, ["from", "to", "subject", "snippet"])), null, 1);
     }
     case "gmail_read": {
@@ -197,7 +196,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
     }
     case "gmail_sent_without_reply": {
       const i = Inputs.gmail_sent_without_reply.parse(rawInput);
-      const rows = await b.sentWithoutReply(i.older_than_days ?? 3);
+      const rows = await b.sentWithoutReply(Math.min(Math.max(i.older_than_days ?? 3, 1), 30));
       return JSON.stringify(rows.map((r) => wrapRecord(`gmail:${r.id}`, r, ["from", "to", "subject", "snippet"])), null, 1);
     }
     case "calendar_list": {
