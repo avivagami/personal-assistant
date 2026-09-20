@@ -7,6 +7,7 @@ import { realBackend, type ToolBackend } from "./backend.js";
 import { connectedEmail } from "../google/auth.js";
 import type { Approval } from "../actions/gate.js";
 import { recordUsage } from "../audit/usage.js";
+import { listPending } from "../actions/gate.js";
 
 type Msg = Anthropic.Beta.BetaMessageParam;
 
@@ -73,7 +74,15 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
     // 1-hour cache: turns are minutes apart while a human reads and replies, so a
     // 5-minute cache would expire between most turns and re-bill the whole prefix.
     { type: "text", text: stableSystemPrompt(c.OWNER_NAME, c.TIMEZONE, { name: c.BOOKING_NAME, phone: c.BOOKING_PHONE, email: c.BOOKING_EMAIL }), cache_control: { type: "ephemeral", ttl: "1h" } },
-    { type: "text", text: volatileSystemPrompt(nowIso, await backend.memoryContext(), email) },
+    {
+      type: "text",
+      text: volatileSystemPrompt(
+        nowIso,
+        await backend.memoryContext(),
+        email,
+        opts.backend ? [] : (await listPending()).map((p) => `${p.action_type}: ${p.summary.split("\n")[0]}`),
+      ),
+    },
   ];
 
   const messages: Msg[] = [...(opts.history ?? []), { role: "user", content: opts.input }];

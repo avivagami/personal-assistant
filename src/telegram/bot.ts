@@ -182,14 +182,18 @@ export async function startBot(): Promise<Bot> {
         await ctx.answerCallbackQuery({ text: "Unknown request." });
         return;
       }
+      const headline = a.summary.split("\n")[0];
       if (kind === "reject") {
         const r = await reject(id);
         await editApprovalMessage(ctx, `${r ? "Rejected" : `Already ${a.status}`}:\n\n${a.summary}`);
+        // The model reads chat history, so decisions must land there too.
+        if (r) await appendChat("user", `[Decision] Rejected: ${headline}`);
         return ctx.answerCallbackQuery({ text: r ? "Rejected" : "No change" });
       }
       await ctx.answerCallbackQuery({ text: "Working..." });
       const result = await approveAndExecute(id);
       await editApprovalMessage(ctx, `${result.ok ? "Done" : "Not done"}: ${result.message.slice(0, 700)}\n\n${a.summary}`);
+      await appendChat("user", `[Decision] ${result.ok ? "Approved and done" : "Approved but failed"}: ${headline}. ${result.message.slice(0, 200)}`);
       if (result.ok && a.action_type === "browser_submit") await continueAfterSubmit(a, result.message);
       return;
     }

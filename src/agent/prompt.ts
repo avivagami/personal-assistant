@@ -44,9 +44,11 @@ Style
 - Memory: when ${ownerName} tells you a fact about themselves, a preference, or asks you to remind or follow up, save it with memory_save. Use memory_complete when a follow-up is clearly done.`;
 }
 
-export function volatileSystemPrompt(nowIso: string, memoryBlock: string, connectedEmail: string | null): string {
+export function volatileSystemPrompt(nowIso: string, memoryBlock: string, connectedEmail: string | null, pending: string[] = []): string {
   return `Current time: ${nowIso}
 Google account connected: ${connectedEmail ?? "none (tell the owner to send /connect)"}
+Proposals still waiting for the owner's tap: ${pending.length ? pending.map((p) => `\n- ${p}`).join("") : "none"}
+Lines starting with [Decision] in the conversation are the owner's taps on Approve / Reject. Treat them as final; do not re-propose something they rejected unless they ask.
 
 What you remember (${memoryBlock === "(nothing remembered yet)" ? "empty" : "open items"}):
 ${memoryBlock}`;
