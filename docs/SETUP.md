@@ -141,8 +141,17 @@ In Telegram, open your bot:
 
 ## Updating
 
+The server checks GitHub once an hour and rebuilds itself when there is a
+new version. To turn that on (one time):
+
     ssh root@YOUR_SERVER_IP
-    cd /opt/assistant && git pull && docker compose up -d --build
+    bash /opt/assistant/scripts/enable-auto-update.sh
+
+To update right now instead of waiting:
+
+    bash /opt/assistant/scripts/auto-update.sh
+
+Update history is in `/var/log/assistant-update.log`.
 
 ## Turning it off
 
