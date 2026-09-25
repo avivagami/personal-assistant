@@ -4,6 +4,7 @@ import { wrapRecord } from "./untrusted.js";
 import { ACTION_TYPES, ActionSchemas, type Approval } from "../actions/gate.js";
 import type { ToolBackend } from "./backend.js";
 import { browserSession, formatSnapshot } from "../browser/session.js";
+import { describe as describeForecast } from "../weather/forecast.js";
 import { wrapUntrusted } from "./untrusted.js";
 
 type Tool = Anthropic.Beta.BetaTool;
@@ -92,6 +93,19 @@ export const TOOLS: Tool[] = [
       required: ["query"],
       additionalProperties: false,
     },
+    strict: true,
+  },
+  {
+    name: "contacts_search",
+    description:
+      "Look up someone in the owner's Google Contacts by name, email or phone. Use this BEFORE proposing an email to a person named without an address, so you send to the right person. If several people match, ask the owner which one.",
+    input_schema: { type: "object", properties: { query: { type: "string" } }, required: ["query"], additionalProperties: false },
+    strict: true,
+  },
+  {
+    name: "weather_today",
+    description: "Today's weather where the owner lives: range, conditions, chance of rain, and temperature through the day.",
+    input_schema: { type: "object", properties: {}, required: [], additionalProperties: false },
     strict: true,
   },
   {
@@ -202,6 +216,8 @@ const Inputs = {
   calendar_list: z.object({ from_iso: z.string(), to_iso: z.string() }),
   calendar_search: z.object({ query: z.string() }),
   drive_search: z.object({ query: z.string() }),
+  contacts_search: z.object({ query: z.string() }),
+  weather_today: z.object({}),
   memory_save: z.object({ kind: z.enum(["fact", "preference", "followup"]), content: z.string(), due_at: z.string().optional() }),
   memory_complete: z.object({ id: z.string() }),
   memory_delete: z.object({ id: z.string() }),
@@ -272,6 +288,20 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const i = Inputs.drive_search.parse(rawInput);
       const files = await b.searchDrive(i.query);
       return JSON.stringify(files.map((f) => wrapRecord(`drive:${f.id}`, f, ["name"])), null, 1);
+    }
+    case "contacts_search": {
+      const i = Inputs.contacts_search.parse(rawInput);
+      const rows = await b.searchContacts(i.query);
+      if (rows.length === 0) return "No contact matches that. Ask the owner for the address, or search their mail for it.";
+      return JSON.stringify(rows.map((r) => wrapRecord(`contacts:${r.name}`, r, ["name", "org"])), null, 1);
+    }
+    case "weather_today": {
+      try {
+        return describeForecast(await b.forecast());
+      } catch (e) {
+        // A weather outage must not cost the owner their morning brief.
+        return `Weather unavailable right now (${e instanceof Error ? e.message : String(e)}). Carry on without it.`;
+      }
     }
     case "memory_save": {
       const i = Inputs.memory_save.parse(rawInput);

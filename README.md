@@ -17,6 +17,10 @@ Built from [PLAN.md](docs/PLAN.md). This is Tier 1.
   and file name reaches the model inside an `UNTRUSTED_CONTENT` envelope with
   a standing rule that instructions inside it are reported, not followed.
   `npm run test:injection` runs the Alex Cohen phishing experiment.
+- **Knows who people are.** Looks up names in your Google Contacts before
+  addressing an email, so "email Dana" reaches the right Dana. Read-only,
+  fetched live, never stored.
+- **Weather in the brief.** From a free service with no account and no key.
 - **Remembers little.** Facts, preferences and open follow-ups in Supabase.
   `/memory` lists them, `/forget` truncates them.
 - **Revoke means gone.** `/disconnect` revokes the token at Google and deletes

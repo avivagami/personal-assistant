@@ -6,6 +6,8 @@
 import * as gmail from "../google/gmail.js";
 import * as calendar from "../google/calendar.js";
 import * as drive from "../google/drive.js";
+import * as contacts from "../google/contacts.js";
+import * as weather from "../weather/forecast.js";
 import * as memory from "../memory/store.js";
 import * as gate from "../actions/gate.js";
 
@@ -17,6 +19,8 @@ export interface ToolBackend {
   listEvents: typeof calendar.listEvents;
   searchEvents: typeof calendar.searchEvents;
   searchDrive: typeof drive.searchDrive;
+  searchContacts: typeof contacts.searchContacts;
+  forecast: typeof weather.forecast;
   remember: typeof memory.remember;
   completeFollowup: typeof memory.completeFollowup;
   deleteMemory: typeof memory.deleteMemory;
@@ -33,6 +37,8 @@ export const realBackend: ToolBackend = {
   listEvents: calendar.listEvents,
   searchEvents: calendar.searchEvents,
   searchDrive: drive.searchDrive,
+  searchContacts: contacts.searchContacts,
+  forecast: weather.forecast,
   remember: memory.remember,
   completeFollowup: memory.completeFollowup,
   deleteMemory: memory.deleteMemory,

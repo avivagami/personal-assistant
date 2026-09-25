@@ -51,7 +51,7 @@ can revoke, instead of a password.
 1. Go to https://console.cloud.google.com and create a new project called
    "Personal assistant".
 2. **APIs & Services → Library**: enable **Gmail API**, **Google Calendar API**,
-   **Google Drive API**.
+   **Google Drive API**, and **People API** (the last one is for contacts).
 3. **APIs & Services → OAuth consent screen**: choose External, fill in the app
    name and your email. Under **Test users**, add your own Gmail address.
    (Leave the app in "Testing"; you are the only user.)
@@ -61,7 +61,11 @@ can revoke, instead of a password.
    `GOOGLE_CLIENT_SECRET`.
 
 Scopes requested by the assistant, and nothing more: Gmail read, compose
-(drafts), send; Calendar read and events; Drive read only; your email address.
+(drafts), send; Calendar read and events; Drive read only; Contacts read only;
+your email address.
+
+If you already connected before contacts were added, send `/disconnect` and
+then `/connect` once, so the new permission is included.
 
 Note: apps in "Testing" mode have refresh tokens that expire after 7 days
 unless you publish the app. Publishing an app that only you use is fine and

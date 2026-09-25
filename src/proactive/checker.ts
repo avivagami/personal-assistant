@@ -74,7 +74,7 @@ Use gmail_read / calendar_list to look at them.`;
 /** Weekday morning. */
 export async function morningBrief(): Promise<void> {
   if (!(await googleClient())) return;
-  const task = `Morning brief. Write today's brief for the owner: today's calendar in order with times, unanswered emails older than 2 days that still seem to need a reply, and open follow-ups from memory that are due today or overdue. Keep it to what matters. No headers. If there is genuinely nothing, say so in one line. Do not propose actions.`;
+  const task = `Morning brief. Call weather_today first, then write today's brief for the owner: one short weather line (mention rain or an unusual temperature only if it would change what they wear or carry), today's calendar in order with times, unanswered emails older than 2 days that still seem to need a reply, and open follow-ups from memory that are due today or overdue. Keep it to what matters. No headers. If the day is empty, say so in one line. Do not propose actions.`;
   await deliver(task, "morning_brief", []);
 }
 

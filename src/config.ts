@@ -23,6 +23,10 @@ const schema = z.object({
   BOOKING_EMAIL: z.string().default(""),
   // Path to a Chromium binary when not using the bundled one (local dev only).
   CHROMIUM_PATH: z.string().optional(),
+  // Weather for the morning brief. Defaults to Tel Aviv.
+  WEATHER_LAT: z.coerce.number().default(32.0853),
+  WEATHER_LON: z.coerce.number().default(34.7818),
+  WEATHER_PLACE: z.string().default("Tel Aviv"),
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(10),
   GOOGLE_CLIENT_ID: z.string().min(5),
