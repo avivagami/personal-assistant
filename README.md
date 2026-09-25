@@ -27,6 +27,10 @@ Built from [PLAN.md](docs/PLAN.md). This is Tier 1.
   the encrypted copy.
 - **Audits everything.** Every message, tool call, proposal and approval in
   one table, purged after 90 days.
+- **Sorts the inbox.** Overnight mail is triaged into urgent, reply, money,
+  calendar and noise, each handled differently: urgent gets a drafted reply,
+  money gets the amount and due date, a date that is missing from the calendar
+  gets proposed as an event. Part of the morning brief, or `/triage` any time.
 - **Proactive.** Morning brief on weekdays, dropped-thread nudges at 17:00,
   and a 15-minute glance at new mail and the next hour of calendar.
 
@@ -46,7 +50,7 @@ src/
   google/               OAuth (encrypted, revocable), Gmail, Calendar, Drive
   memory/store.ts       facts, preferences, follow-ups, /forget
   audit/log.ts          the audit table and purge
-  proactive/            periodic check, morning brief, dropped threads
+  proactive/            periodic check, morning brief, inbox triage, dropped threads
 supabase/migrations/    the six assistant_* tables
 scripts/injection-test.ts   the phishing experiment
 docs/SETUP.md           step by step, no coding

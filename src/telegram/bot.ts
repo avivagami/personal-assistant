@@ -1,5 +1,6 @@
 import { Bot, InlineKeyboard, InputFile, type Context } from "grammy";
 import { browserSession } from "../browser/session.js";
+import { inboxTriage } from "../proactive/checker.js";
 import { config } from "../config.js";
 import { audit, recentAudit } from "../audit/log.js";
 import { runAgent } from "../agent/run.js";
@@ -82,6 +83,7 @@ const HELP = `I read your Gmail, Calendar and Drive live and act only after you 
 /pending - proposals waiting for your tap
 /memory - what I remember
 /forget - erase memory and chat history
+/triage - sort what is new in my inbox
 /audit - last 20 things I did
 /cost - what I have cost today and this month
 /help - this
@@ -146,6 +148,16 @@ export async function startBot(): Promise<Bot> {
   bot.command("forget", async (ctx) => {
     const kb = new InlineKeyboard().text("Yes, erase everything", "forget:confirm").text("Cancel", "forget:cancel");
     await ctx.reply("Erase all memories, follow-ups and chat history? The audit log and the Google connection stay.", { reply_markup: kb });
+  });
+
+  bot.command("triage", async (ctx) => {
+    await ctx.replyWithChatAction("typing");
+    const typing = setInterval(() => ctx.replyWithChatAction("typing").catch(() => {}), 4500);
+    try {
+      await say(ctx.chat.id, await inboxTriage());
+    } finally {
+      clearInterval(typing);
+    }
   });
 
   bot.command("cost", async (ctx) => {
@@ -248,6 +260,7 @@ export async function startBot(): Promise<Bot> {
     { command: "pending", description: "Approvals waiting" },
     { command: "memory", description: "What I remember" },
     { command: "forget", description: "Erase memory" },
+    { command: "triage", description: "Sort the new mail" },
     { command: "audit", description: "Recent activity" },
     { command: "cost", description: "API spend today and this month" },
   ]);

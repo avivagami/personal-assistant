@@ -42,6 +42,8 @@ const schema = z.object({
   PROACTIVE_ENABLED: z.coerce.boolean().default(true),
   PROACTIVE_INTERVAL_MINUTES: z.coerce.number().int().min(5).default(15),
   MORNING_BRIEF_TIME: z.string().regex(/^\d{2}:\d{2}$/).default("07:30"),
+  // Draft replies for the urgent bucket during triage (at most three).
+  TRIAGE_AUTODRAFT: z.coerce.boolean().default(true),
   DROPPED_THREADS_TIME: z.string().regex(/^\d{2}:\d{2}$/).default("17:00"),
   // Retention (days)
   AUDIT_RETENTION_DAYS: z.coerce.number().int().default(90),
